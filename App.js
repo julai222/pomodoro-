@@ -7,38 +7,12 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function App() {
-
-  // 🔊 SONIDO
   async function playSound() {
-    try {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-      });
-
-      const { sound } = await Audio.Sound.createAsync(
-        require('./assets/sound.mp3'),
-        {
-          shouldPlay: true,
-          volume: 1.0,
-        }
-      );
-
-      await sound.playAsync();
-    } catch (error) {
-      console.log("ERROR SONIDO:", error);
-    }
+  const { sound } = await Audio.Sound.createAsync(
+    require('./assets/sound.mp3')
+  );
+  await sound.playAsync();
   }
-
-  // 📳 VIBRACIÓN
-  function vibrateStrong() {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-    setTimeout(() => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    }, 200);
-  }
-
   const [time, setTime] = useState(1500);
   const [duration, setDuration] = useState(1500);
   const [isRunning, setIsRunning] = useState(false);
@@ -51,6 +25,7 @@ export default function App() {
   const strokeWidth = 12;
   const circumference = 2 * Math.PI * radius;
 
+  // animación suave del círculo
   const strokeDashoffset = animated.interpolate({
     inputRange: [0, 1],
     outputRange: [circumference, 0],
@@ -71,9 +46,9 @@ export default function App() {
             clearInterval(intervalRef.current);
             setIsRunning(false);
 
-            playSound();      // 🔊 sonido
-            vibrateStrong();  // 📳 vibración
+            playSound(); // 🔊 tu música acá
 
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             return 0;
           }
           return prev - 1;
@@ -90,6 +65,7 @@ export default function App() {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  // 🎨 colores tipo aesthetic
   const getColors = () => {
     if (mode === 'P') return ['#ff9a9e', '#fad0c4'];
     if (mode === 'DC') return ['#a18cd1', '#fbc2eb'];
@@ -167,6 +143,7 @@ export default function App() {
   );
 }
 
+// 🔥 necesario para animar SVG
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const styles = StyleSheet.create({
@@ -178,11 +155,10 @@ const styles = StyleSheet.create({
 
   subtitle: {
     color: '#fff',
-    fontSize: 36,
+    fontSize: 14,
     letterSpacing: 2,
     marginBottom: 20,
-    opacity: 0.9,
-    fontWeight: '600',
+    opacity: 0.8,
   },
 
   circleContainer: {
@@ -195,7 +171,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     fontSize: 65,
     color: '#fff',
-    fontWeight: '200',
+    fontWeight: '200', // más elegante
   },
 
   row: {
