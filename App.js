@@ -1,209 +1,212 @@
-import { StatusBar } from 'expo-status-bar';
-import { Audio } from 'expo-av';
-import { StyleSheet, Text, View, TouchableOpacity, Animated, Easing } from 'react-native';
-import { useState, useEffect, useRef } from 'react';
-import Svg, { Circle } from 'react-native-svg';
-import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from "expo-status-bar";
+import { Audio } from "expo-av";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  Animated,
+} from "react-native";
+import { useState, useEffect, useRef } from "react";
+import Svg, { Circle } from "react-native-svg";
+import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function App() {
-  async function playSound() {
-  const { sound } = await Audio.Sound.createAsync(
-    require('./assets/sound.mp3')
-  );
-  await sound.playAsync();
-  }
   const [time, setTime] = useState(1500);
   const [duration, setDuration] = useState(1500);
   const [isRunning, setIsRunning] = useState(false);
-  const [mode, setMode] = useState('P');
+  const [mode, setMode] = useState("P"); // 'P' 专注, 'S' 短休, 'L' 长休
 
   const animated = useRef(new Animated.Value(1)).current;
   const intervalRef = useRef(null);
 
-  const radius = 120;
-  const strokeWidth = 12;
+  const radius = 130;
+  const strokeWidth = 5;
   const circumference = 2 * Math.PI * radius;
 
-  // animación suave del círculo
   const strokeDashoffset = animated.interpolate({
     inputRange: [0, 1],
     outputRange: [circumference, 0],
   });
 
   useEffect(() => {
-    if (isRunning) {
-      Animated.timing(animated, {
-        toValue: 0,
-        duration: time * 1000,
-        easing: Easing.linear,
-        useNativeDriver: false,
-      }).start();
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: true,
+    });
+  }, []);
 
+  async function playClick() {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require("./assets/dragon-studio-new-notification-3-398649.mp3"),
+      );
+      await sound.playAsync();
+      sound.setOnPlaybackStatusUpdate((s) => {
+        if (s.didJustFinish) sound.unloadAsync();
+      });
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
+  async function playAlarm() {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require("./assets/sound.mp3"),
+      );
+      await sound.playAsync();
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
+  useEffect(() => {
+    if (isRunning) {
       intervalRef.current = setInterval(() => {
         setTime((prev) => {
           if (prev <= 1) {
             clearInterval(intervalRef.current);
             setIsRunning(false);
-
-            playSound(); // 🔊 tu música acá
-
+            playAlarm();
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             return 0;
           }
           return prev - 1;
         });
       }, 1000);
+    } else {
+      clearInterval(intervalRef.current);
     }
-
     return () => clearInterval(intervalRef.current);
   }, [isRunning]);
 
-  const formatTime = () => {
-    const m = Math.floor(time / 60);
-    const s = time % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
+  useEffect(() => {
+    Animated.timing(animated, {
+      toValue: time / duration,
+      duration: 1000,
+      useNativeDriver: false,
+    }).start();
+  }, [time]);
 
-  // 🎨 colores tipo aesthetic
-  const getColors = () => {
-    if (mode === 'P') return ['#ff9a9e', '#fad0c4'];
-    if (mode === 'DC') return ['#a18cd1', '#fbc2eb'];
-    if (mode === 'DL') return ['#89f7fe', '#66a6ff'];
-  };
-
-  const changeMode = (newMode, seconds) => {
-    setMode(newMode);
-    setTime(seconds);
-    setDuration(seconds);
+  function handleMode(m, t) {
+    playClick();
+    setMode(m);
+    setTime(t);
+    setDuration(t);
     setIsRunning(false);
-    animated.setValue(1);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }
+
+  const formatTime = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec < 10 ? "0" : ""}${sec}`;
   };
+
+  const getColors = () => {
+    if (mode === "P") return ["#F5F5DC", "#FFD1DC"];
+    if (mode === "S") return ["#E0F7FA", "#B2EBF2"];
+    return ["#F5F5DC", "#E0F7FA"];
+  };
+
+  const activeColor = mode === "S" || mode === "L" ? "#4A90E2" : "#D48192";
 
   return (
     <LinearGradient colors={getColors()} style={styles.container}>
+      <StatusBar style="dark" />
 
-      <Text style={styles.subtitle}>POMODORO</Text>
+      <Text style={[styles.label, { color: activeColor }]}>
+        {mode === "P" ? "专注模式" : mode === "S" ? "短时间休息" : "长时间休息"}
+      </Text>
 
-      {/* CÍRCULO */}
-      <View style={styles.circleContainer}>
-        <Svg width={300} height={300}>
+      <View style={styles.timerWrapper}>
+        <Svg width={radius * 2 + 20} height={radius * 2 + 20}>
           <Circle
-            stroke="rgba(255,255,255,0.2)"
-            fill="none"
-            cx="150"
-            cy="150"
+            cx={radius + 10}
+            cy={radius + 10}
             r={radius}
+            stroke="rgba(0,0,0,0.05)"
             strokeWidth={strokeWidth}
+            fill="transparent"
           />
-
           <AnimatedCircle
-            stroke="#fff"
-            fill="none"
-            cx="150"
-            cy="150"
+            cx={radius + 10}
+            cy={radius + 10}
             r={radius}
+            stroke={activeColor}
             strokeWidth={strokeWidth}
+            fill="transparent"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
-            rotation="-90"
-            origin="150,150"
           />
         </Svg>
-
-        <Text style={styles.timer}>{formatTime()}</Text>
-      </View>
-
-      {/* BOTONES */}
-      <View style={styles.row}>
-        <TouchableOpacity style={styles.btn} onPress={() => changeMode('P', 1500)}>
-          <Text style={styles.btnText}>P</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.btn} onPress={() => changeMode('DC', 300)}>
-          <Text style={styles.btnText}>DC</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.btn} onPress={() => changeMode('DL', 600)}>
-          <Text style={styles.btnText}>DL</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* START */}
-      <TouchableOpacity style={styles.startBtn} onPress={() => setIsRunning(!isRunning)}>
-        <Text style={styles.startText}>
-          {isRunning ? 'Pausar' : 'Iniciar'}
+        <Text style={[styles.timerText, { color: activeColor }]}>
+          {formatTime(time)}
         </Text>
-      </TouchableOpacity>
+      </View>
 
-      <StatusBar style="light" />
+      <View style={styles.footer}>
+        <View style={styles.tabs}>
+          <TouchableOpacity
+            onPress={() => handleMode("P", 1500)}
+            style={mode === "P" && styles.activeTab}
+          >
+            <Text style={[styles.tabText, { color: activeColor }]}>专注</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => handleMode("S", 300)}
+            style={mode === "S" && styles.activeTab}
+          >
+            <Text style={[styles.tabText, { color: activeColor }]}>短休</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => handleMode("L", 900)}
+            style={mode === "L" && styles.activeTab}
+          >
+            <Text style={[styles.tabText, { color: activeColor }]}>长休</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.playBtn, { borderBottomColor: activeColor }]}
+          onPress={() => {
+            playClick();
+            setIsRunning(!isRunning);
+          }}
+        >
+          <Text style={[styles.playText, { color: activeColor }]}>
+            {isRunning ? "暂停" : "开始"}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </LinearGradient>
   );
 }
 
-// 🔥 necesario para animar SVG
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "space-around",
+    paddingVertical: 60,
   },
-
-  subtitle: {
-    color: '#fff',
-    fontSize: 14,
-    letterSpacing: 2,
-    marginBottom: 20,
-    opacity: 0.8,
+  label: { fontSize: 16, letterSpacing: 3, fontWeight: "600" },
+  timerWrapper: { justifyContent: "center", alignItems: "center" },
+  timerText: { position: "absolute", fontSize: 75, fontWeight: "200" },
+  footer: { alignItems: "center", width: "100%" },
+  tabs: { flexDirection: "row", gap: 20, marginBottom: 40 },
+  tabText: { fontSize: 15, fontWeight: "500", paddingHorizontal: 10 },
+  activeTab: { borderBottomWidth: 2, borderBottomColor: "rgba(0,0,0,0.1)" },
+  playBtn: {
+    borderBottomWidth: 1,
+    paddingBottom: 5,
+    width: 120,
+    alignItems: "center",
   },
-
-  circleContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-
-  timer: {
-    position: 'absolute',
-    fontSize: 65,
-    color: '#fff',
-    fontWeight: '200', // más elegante
-  },
-
-  row: {
-    flexDirection: 'row',
-    gap: 15,
-  },
-
-  btn: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    padding: 14,
-    borderRadius: 20,
-    width: 70,
-    alignItems: 'center',
-  },
-
-  btnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  startBtn: {
-    marginTop: 30,
-    backgroundColor: 'rgba(255,255,255,0.35)',
-    paddingVertical: 14,
-    paddingHorizontal: 60,
-    borderRadius: 30,
-  },
-
-  startText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
+  playText: { fontSize: 18, letterSpacing: 2, fontWeight: "700" },
 });
